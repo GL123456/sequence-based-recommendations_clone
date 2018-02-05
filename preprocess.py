@@ -308,7 +308,7 @@ def main():
 
 	args = command_parser()
 	np.random.seed(seed=args.seed)
-	warn_user(args.dirname)
+	#warn_user(args.dirname)
 	create_dirs(args.dirname)
 	data = load_data(args.filename, args.columns, args.sep)
 	data = remove_rare_elements(data, args.min_user_activity, args.min_item_pop)
