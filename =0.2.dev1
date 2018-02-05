@@ -1,0 +1,4 @@
+Collecting lasagne
+Requirement already satisfied: numpy in /Library/Python/2.7/site-packages (from lasagne)
+Installing collected packages: lasagne
+Successfully installed lasagne-0.1
