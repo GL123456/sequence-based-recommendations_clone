@@ -387,6 +387,7 @@ def main():
 	make_sequence_format(train_set, val_set, test_set, args.dirname)
 	data_concat = [traindata, testdata]
 	data = pd.concat(data_concat)
+	save_index_mapping(traindata, args.sep, args.dirname)
 	save_data_stats(data, train_set, val_set, test_set, args.dirname)
 	make_readme(args.dirname, val_set, test_set)
 
