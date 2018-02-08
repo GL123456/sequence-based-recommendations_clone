@@ -7,6 +7,7 @@ import argparse
 import os
 import sys
 from shutil import copyfile
+import pickle as pkl
 
 def command_parser():
 	parser = argparse.ArgumentParser()
@@ -63,6 +64,48 @@ def load_data(filename, columns, separator):
 		data.sort_values('t', inplace=True)
 
 	return data
+
+def load_data_split(folder, columns, separator):
+	''' Load the data from filename and sort it according to timestamp.
+	Returns a dataframe with 3 columns: user_id, item_id, rating
+	'''
+
+	print('Load data...')
+	with open (folder + '/traindata_small.pkl' , 'rb' ) as f:
+		pkl_data = pkl.load(f)
+		traindata = pkl_data['graph']
+
+	with open (folder + '/testdata_small.pkl' , 'rb' ) as f:
+		pkl_data = pkl.load(f)
+		testdata = pkl_data['graph']
+
+	traindata = pd.DataFrame(np.array(traindata), columns = list(columns) )
+	testdata = pd.DataFrame(np.array(testdata), columns = list(columns) )
+
+	#data = pd.read_csv(filename, sep=separator, names=list(columns), index_col=False, usecols=range(len(columns)))
+
+	if 'r' not in columns:
+		# Add a column of default ratings
+		traindata['r'] = 1
+		testdata['r'] = 1
+
+	if 't' in columns:
+		# sort according to the timestamp column
+		if traindata['t'].dtype == np.int64: # probably a timestamp
+			traindata['t'] = pd.to_datetime(traindata['t'], unit='s')
+		else:
+			traindata['t'] = pd.to_datetime(traindata['t'])
+		print('Sort data in chronological order...')
+		traindata.sort_values('t', inplace=True)
+
+		if testdata['t'].dtype == np.int64: # probably a timestamp
+			testdata['t'] = pd.to_datetime(testdata['t'], unit='s')
+		else:
+			testdata['t'] = pd.to_datetime(testdata['t'])
+		print('Sort data in chronological order...')
+		testdata.sort_values('t', inplace=True)
+
+	return traindata,testdata
 
 def remove_rare_elements(data, min_user_activity, min_item_popularity):
 	'''Removes user and items that appears in too few interactions.
@@ -150,24 +193,20 @@ def split_data(data, nb_val_users, nb_test_users, dirname):
 
 	return train_set, val_set, test_set
 
-def split_data_timeline(data, nb_val_users, nb_test_users, dirname):
+def split_data_timeline(traindata, testdata, dirname):
 	'''Splits the data set into training, validation and test sets.
 	Each user is in one and only one set.
 	nb_val_users is the number of users to put in the validation set.
 	nb_test_users is the number of users to put in the test set.
 	'''
-	#Create train and test set by 80-20\% split
-	counts = data['u'].map(data.groupby('u').apply(len))
-	ranks = data.groupby('u')['i'].rank(method='first')
-	mask = (ranks / counts) > 0.8
-	test_set = data[mask]
-	rem_data = data[~mask]
 
-	counts = rem_data['u'].map(rem_data.groupby('u').apply(len))
-	ranks = rem_data.groupby('u')['i'].rank(method='first')
+	test_set = testdata
+
+	counts = traindata['u'].map(traindata.groupby('u').apply(len))
+	ranks = traindata.groupby('u')['i'].rank(method='first')
 	mask = (ranks / counts) > 0.8
-	val_set = rem_data[mask]
-	train_set = rem_data[~mask]
+	val_set = traindata[mask]
+	train_set = traindata[~mask]
 
 	print('Save training, validation and test sets in the triplets format...')
 	train_set.to_csv(dirname + "data/train_set_triplets", sep="\t", columns=['u', 'i', 'r'], index=False, header=False)
@@ -175,6 +214,32 @@ def split_data_timeline(data, nb_val_users, nb_test_users, dirname):
 	test_set.to_csv(dirname + "data/test_set_triplets", sep="\t", columns=['u', 'i', 'r'], index=False, header=False)
 
 	return train_set, val_set, test_set
+
+# def split_data_timeline(data, nb_val_users, nb_test_users, dirname):
+# 	'''Splits the data set into training, validation and test sets.
+# 	Each user is in one and only one set.
+# 	nb_val_users is the number of users to put in the validation set.
+# 	nb_test_users is the number of users to put in the test set.
+# 	'''
+# 	#Create train and test set by 80-20\% split
+# 	counts = data['u'].map(data.groupby('u').apply(len))
+# 	ranks = data.groupby('u')['i'].rank(method='first')
+# 	mask = (ranks / counts) > 0.8
+# 	test_set = data[mask]
+# 	rem_data = data[~mask]
+#
+# 	counts = rem_data['u'].map(rem_data.groupby('u').apply(len))
+# 	ranks = rem_data.groupby('u')['i'].rank(method='first')
+# 	mask = (ranks / counts) > 0.8
+# 	val_set = rem_data[mask]
+# 	train_set = rem_data[~mask]
+#
+# 	print('Save training, validation and test sets in the triplets format...')
+# 	train_set.to_csv(dirname + "data/train_set_triplets", sep="\t", columns=['u', 'i', 'r'], index=False, header=False)
+# 	val_set.to_csv(dirname + "data/val_set_triplets", sep="\t", columns=['u', 'i', 'r'], index=False, header=False)
+# 	test_set.to_csv(dirname + "data/test_set_triplets", sep="\t", columns=['u', 'i', 'r'], index=False, header=False)
+#
+# 	return train_set, val_set, test_set
 
 def gen_sequences(data, half=False):
 	'''Generates sequences of user actions from data.
@@ -310,12 +375,17 @@ def main():
 	np.random.seed(seed=args.seed)
 	warn_user(args.dirname)
 	create_dirs(args.dirname)
-	data = load_data(args.filename, args.columns, args.sep)
-	data = remove_rare_elements(data, args.min_user_activity, args.min_item_pop)
-	data = save_index_mapping(data, args.sep, args.dirname)
+
+	#data = load_data(args.filename, args.columns, args.sep)
+	#data = remove_rare_elements(data, args.min_user_activity, args.min_item_pop)
+	#data = save_index_mapping(data, args.sep, args.dirname)
 	#data.groupby('u')['Timestamp'].rank(method='first')
-	train_set, val_set, test_set = split_data_timeline(data, args.val_size, args.test_size, args.dirname)
+
+	traindata, testdata = load_data_split(args.filename, args.columns, args.sep)
+	train_set, val_set, test_set = split_data_timeline(traindata, testdata, args.dirname)
 	make_sequence_format(train_set, val_set, test_set, args.dirname)
+	data_concat = [traindata, testdata]
+	data = pd.concat(data_concat)
 	save_data_stats(data, train_set, val_set, test_set, args.dirname)
 	make_readme(args.dirname, val_set, test_set)
 
