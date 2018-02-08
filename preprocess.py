@@ -374,6 +374,7 @@ def main():
 	args = command_parser()
 	np.random.seed(seed=args.seed)
 	#warn_user(args.dirname)
+	args.dirname = args.filename
 	create_dirs(args.dirname)
 
 	#data = load_data(args.filename, args.columns, args.sep)
