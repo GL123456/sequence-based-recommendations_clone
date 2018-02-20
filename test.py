@@ -57,7 +57,7 @@ def run_tests(predictor, model_file, dataset, args, get_full_recommendation_list
 		#num_viewed = int(len(sequence) / 2)
 		#viewed = sequence[:num_viewed]
 		num_viewed = 0
-		viewed = dataset.training_set(epochs=1)[0]
+		viewed = dataset.training_set()[userid,]
 		goal = [i[0] for i in sequence[num_viewed:]]
 
 		if  args.clusters > 0:
