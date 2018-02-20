@@ -46,7 +46,7 @@ def run_tests(predictor, model_file, dataset, args, get_full_recommendation_list
 	# Prepare evaluator
 	evaluator = evaluation.Evaluator(dataset, k=k)
 
-	if get_full_recommendation_list: 
+	if get_full_recommendation_list:
 		k = dataset.n_items
 
 	count = 0
@@ -54,8 +54,10 @@ def run_tests(predictor, model_file, dataset, args, get_full_recommendation_list
 	start = time.clock()
 	for sequence, user_id in dataset.test_set(epochs=1):
 		count += 1
-		num_viewed = int(len(sequence) / 2)
-		viewed = sequence[:num_viewed]
+		#num_viewed = int(len(sequence) / 2)
+		#viewed = sequence[:num_viewed]
+		num_viewed = 0
+		viewed = dataset.training_set(epochs=1)[0]
 		goal = [i[0] for i in sequence[num_viewed:]]
 
 		if  args.clusters > 0:
@@ -77,7 +79,7 @@ def run_tests(predictor, model_file, dataset, args, get_full_recommendation_list
 	return evaluator
 
 def print_results(ev, metrics, plot=True, file=None, n_batches=None, print_full_rank_comparison=False):
-	
+
 	for m in metrics:
 		if m not in ev.metrics:
 			raise ValueError('Unkown metric: ' + m)
@@ -108,7 +110,7 @@ def get_last_tested_batch(filename):
 	'''If the output file exist already, it will look at the content of the file and return the last batch that was tested.
 	This is used to avoid testing to times the same model.
 	'''
-	
+
 	if filename is not None and os.path.isfile(filename):
 		with open(filename) as f:
 			for line in f:
@@ -118,7 +120,7 @@ def get_last_tested_batch(filename):
 		return 0
 
 def test_command_parser(parser):
-	
+
 	parser.add_argument('-d', dest='dataset', help='Directory name of the dataset.', default='', type=str)
 	parser.add_argument('-i', dest='number_of_batches', help='Number of epochs, if not set it will compare all the available models', default=-1, type=int)
 	parser.add_argument('-k', dest='nb_of_predictions', help='Number of predictions to make. It is the "k" in "prec@k", "rec@k", etc.', default=10, type=int)
@@ -128,7 +130,7 @@ def test_command_parser(parser):
 	parser.add_argument('--save_rank', help='Save the full comparison of goal and prediction ranking.', action='store_true')
 
 def main():
-	
+
 	args = parse.command_parser(parse.predictor_command_parser, test_command_parser)
 
 	args.training_max_length = args.max_length
@@ -142,7 +144,7 @@ def main():
 	file = find_models(predictor, dataset, args)
 
 	if args.number_of_batches == "*" and args.method != "UKNN" and args.method != "MM" and args.method != "POP":
-		
+
 		output_file = save_file_name(predictor, dataset, args)
 
 		last_tested_batch = get_last_tested_batch(output_file)
